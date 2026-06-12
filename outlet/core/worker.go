@@ -102,6 +102,13 @@ func (w *worker) processIncomingFlow(ctx context.Context, data []byte) error {
 			}
 		}
 
+		// Export enriched flow to Kafka, in parallel with ClickHouse, if enabled.
+		if w.c.d.KafkaOut != nil && w.c.d.KafkaOut.Enabled() {
+			if jsonBytes, err := w.bf.MarshalFlowJSON(); err == nil {
+				w.c.d.KafkaOut.Send(exporter, jsonBytes)
+			}
+		}
+
 		// Finalize and forward to ClickHouse
 		w.c.metrics.flowsForwarded.WithLabelValues(exporter).Inc()
 		status := w.cw.FinalizeAndSend(ctx)
